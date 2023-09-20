@@ -1,5 +1,9 @@
 # llm-from-scratch
 build llm from scratch
 
-# reference 
+# tokenizer
+
+# gpt
+
+# reference
 - https://jaykmody.com/blog/gpt-from-scratch
