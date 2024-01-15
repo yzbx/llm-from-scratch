@@ -84,9 +84,10 @@ if __name__ == '__main__':
         vqa_dataset = VqaDataset(data[args.rank::args.world])
         print(f'dataset size is {len(vqa_dataset)}')
         total = math.ceil(len(vqa_dataset)/args.batch_size)
-        for idx, out in enumerate(tqdm(translator.pipe(vqa_dataset, batch_size=args.batch_size), total=total)):
+        for idx, out in enumerate(tqdm(translator.pipe(vqa_dataset.texts, batch_size=args.batch_size), total=total)):
             if idx == 0:
                 print(len(out), out)
+                assert len(out) == args.batch_size
             writer.write_all(out)
 
         writer.close()
