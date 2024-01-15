@@ -1,0 +1,22 @@
+FROM pytorch/pytorch:2.1.0-cuda11.8-cudnn8-devel
+
+ENV PYTHONPATH .
+ENV DEBIAN_FRONTEND=noninteractive
+ENV LANG=C.UTF-8
+ENV TZ=Asia/Shanghai
+# (Optional)
+RUN sed -i 's/http:\/\/archive.ubuntu.com\/ubuntu\//http:\/\/mirrors.aliyun.com\/ubuntu\//g' /etc/apt/sources.list && \
+    pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+
+RUN apt-get update && \
+    apt install -y tzdata && \
+    ln -fs /usr/share/zoneinfo/${TZ} /etc/localtime && \
+    echo ${TZ} > /etc/timezone && \
+    dpkg-reconfigure --frontend noninteractive tzdata && \
+    apt-get install -y gcc ffmpeg libsm6 libxext6 git ninja-build libglib2.0-0 libxrender-dev vim \
+    build-essential libboost-all-dev cmake wget curl \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install flash-attn --no-build-isolation
+CMD bash
