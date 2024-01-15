@@ -1,6 +1,7 @@
 import argparse
 import glob
 import json
+import math
 import os
 import os.path as osp
 from itertools import islice
@@ -10,9 +11,6 @@ from opus_translator import OpusTranslator
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
-LOCAL_RANK = int(os.getenv('LOCAL_RANK', -1))  # https://pytorch.org/docs/stable/elastic/run.html
-RANK = int(os.getenv('RANK', -1))
-WORLD_SIZE = int(os.getenv('WORLD_SIZE', 1))
 
 def batched(iterable, n):
     # batched('ABCDEFG', 3) --> ABC DEF G
@@ -60,6 +58,7 @@ class VqaDataset(Dataset):
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--root_dir', default='/data/wangjiaxin/cvdataset/vqa/llava')
+    parser.add_argument('--model_path', default='/data/wangjiaxin/huggingface/opus-mt-en-zh')
     parser.add_argument('--batch_size', type=int, default=16)
     parser.add_argument('--world', type=int, default=1)
     parser.add_argument('--rank', type=int, default=0)
@@ -77,14 +76,17 @@ if __name__ == '__main__':
         with open(json_file, 'r') as fp:
             data = json.load(fp)
 
-        out_file = osp.dirname(json_file) + f'/opus_world{args.world}_rank{args.rank}' + osp.basename(json_file) + 'l'
+        out_file = osp.dirname(json_file) + f'/opus_world{args.world}_rank{args.rank}_' + osp.basename(json_file) + 'l'
         writer = jsonlines.open(out_file, 'w', flush=True)
 
-        translator = OpusTranslator(gpu=args.rank)
+        translator = OpusTranslator(gpu=args.rank, model_path=args.model_path)
 
         vqa_dataset = VqaDataset(data[args.rank::args.world])
-
-        for out in tqdm(translator.pipe(vqa_dataset, batch_size=args.batch_size)):
+        print(f'dataset size is {len(vqa_dataset)}')
+        total = math.ceil(len(vqa_dataset)/args.batch_size)
+        for idx, out in enumerate(tqdm(translator.pipe(vqa_dataset, batch_size=args.batch_size), total=total)):
+            if idx == 0:
+                print(len(out), out)
             writer.write_all(out)
 
         writer.close()

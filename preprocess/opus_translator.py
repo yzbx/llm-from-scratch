@@ -15,8 +15,8 @@ from preprocess.start_redis import get_redis_database
 
 
 class OpusTranslator():
-    def __init__(self, gpu=0):
-        self.pipe = pipeline("translation", model="/data/wangjiaxin/huggingface/opus-mt-en-zh", trust_remote_code=True, device=f'cuda:{gpu}')
+    def __init__(self, gpu=0, model_path="huggingface/opus-mt-en-zh"):
+        self.pipe = pipeline("translation", model=model_path, trust_remote_code=True, device=f'cuda:{gpu}')
 
     def translate(self, text: str) -> str:
         result = self.pipe(text)
@@ -42,7 +42,7 @@ def fun(work_id):
         remain_size = r.llen('src_ids')
         if remain_size == 0:
             print('nothing in src_ids list')
-            break 
+            break
 
         src_id = r.lpop('src_ids')
 

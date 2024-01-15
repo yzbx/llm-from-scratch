@@ -8,15 +8,25 @@ from itertools import islice
 
 import jsonlines
 from deep_translator import GoogleTranslator
+from language_translate import VqaDataset
 from tqdm import tqdm
 
-from preprocess.start_redis import get_redis_database
 
+def load_data():
+    json_file = '/data/wangjiaxin/cvdataset/vqa/llava/llava_v1_5_mix665k.json'
+    with open(json_file, 'r') as fp:
+        data = json.load(fp)
+
+    return data
 
 def fun(work_id):
-    r = get_redis_database()
-    todo_size = r.llen('src_ids')
+    data = load_data()
+    vqa_dataset = VqaDataset(data[work_id::2])
+    long_texts = vqa_dataset.long_texts
+    todo_size = len(long_texts)
     print(f'todo size = {todo_size}')
+    if todo_size == 0:
+        return 0
 
     proxies_example = {
         "https": "192.168.28.130:2340",
@@ -25,37 +35,25 @@ def fun(work_id):
     translator = GoogleTranslator(source='en', target='zh-CN',  proxies=proxies_example)
 
     if work_id == 0:
-        tbar = tqdm(total = todo_size)
+        tbar = tqdm(long_texts, total = todo_size)
+    else:
+        tbar = long_texts
 
-    while True:
-        src_id = r.lpop('src_ids')
+    out_file = f'/data/wangjiaxin/cvdataset/vqa/llava/long_world2_rank{work_id}_llava_v1_5_mix665k.jsonl'
+    writer = jsonlines.open(out_file, 'w', flush=False)
 
-        if src_id is None:
-            print('src_id is None')
-            break
-
-        r_data = r.get(str(src_id))
-        if r_data is None:
-            print(f'r_data is None for {src_id}')
-            break
-
-        d = json.loads(r_data)
+    for idx, value in enumerate(tbar):
         try:
-            for conv in d['conversations']:
-                value = conv['value']
-                cn_value = translator.translate(value)
-                conv['cn_value'] = cn_value
-
-                time.sleep(0.9)
-
-            r.rpush('results', json.dumps(d))
+            cn_value = translator.translate(value)
         except Exception as e:
             print(e)
+            cn_value = ''
 
-        if work_id == 0:
-            remain_size = r.llen('src_ids')
-            finished = todo_size - remain_size
-            tbar.update(finished)
+        writer.write(dict(en=value, cn=cn_value))
+        if idx % 1024 == 0:
+            writer._flush()
+
+    writer.close()
     return 0
 
 if __name__ == '__main__':
