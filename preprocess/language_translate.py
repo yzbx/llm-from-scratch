@@ -41,7 +41,7 @@ class VqaDataset(Dataset):
         for d in data:
             for x in d['conversations']:
                 en_text = x['value']
-                if len(en_text.split(' ')) >= 400:
+                if len(en_text) >= 0.9 * 512:
                     long_texts.append(en_text)
                 else:
                     texts.append(en_text)
